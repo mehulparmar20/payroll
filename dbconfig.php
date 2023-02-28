@@ -3,16 +3,16 @@ if(!isset($_SESSION)){
     session_start();    
 }
 $server = "localhost";
-$username = "windsonpayroll";
-$password = "Windson@123";
+$username = "root";
+$password = "";
 if(isset($_SESSION['admin_id'])){
     if($_SESSION['admin_id'] == 5){
-        $dbname = "testpayroll";
+        $dbname = "payroll";
     }else{
-        $dbname = "windsonpayrollsite";
+        $dbname = "payroll";
     }
 }else{
-    $dbname = "windsonpayrollsite";
+    $dbname = "payroll";
 }
 $conn = new mysqli($server, $username , $password , $dbname);
 
