@@ -1,0 +1,155 @@
+ul li a .icon {
+  width: 30px;
+  height: 30px;
+  text-align: center;
+  overflow: hidden;
+}
+
+ul li a .icon .fa {
+  width: 100%;
+  height: 100%;
+  line-height: 30px;
+  font-size: 15px;
+  transform: 0.1s;
+  color: #00b2ff;
+}
+
+ul li a .icon .fa:last-child {
+  color: #ffa500;
+}
+
+ul li a:hover .icon .fa {
+  transform: translateY(-100%);
+}
+
+ul li a .name {
+  position: relative;
+  height: 24px;
+  width: 100%;
+  display: block;
+  overflow: hidden;
+}
+
+ul li a .name span {
+  color: #00b2ff;
+  font-size: 15px;
+  line-height: 20px;
+  transition: 0.1s;
+}
+
+ul li a .name span:before {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  width: 100%;
+  height:100%;
+}
+
+ul li a:hover .name span {
+  color: #ffa500;
+  transform: translateY(-100%);
+}
+/*-------------------------*/
+ul li a .icona {
+  width: 30px;
+  height: 30px;
+  text-align: center;
+  overflow: hidden;
+}
+
+ul li a .icona .fa {
+  width: 100%;
+  height: 100%;
+  line-height: 30px;
+  font-size: 15px;
+  transform: 0.1s;
+  color: #ffffff;
+}
+
+ul li a .icona .fa:last-child {
+  color: #ffa500;
+}
+
+ul li a:hover .icona .fa {
+  transform: translateY(-100%);
+}
+
+ul li a .namea {
+  position: relative;
+  height: 20px;
+  width: 100%;
+  display: block;
+  overflow: hidden;
+}
+
+ul li a .namea span {
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 20px;
+  transition: 0.1s;
+}
+
+ul li a .namea span:before {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  width: 100%;
+  height:100%;
+}
+
+ul li a:hover .namea span {
+  color: #ffa500;
+  transform: translateY(-100%);
+}
+/*-------------------------*/
+ul li a .iconb {
+  width: 30px;
+  height: 30px;
+  text-align: center;
+  overflow: hidden;
+}
+
+ul li a .iconb .fa {
+  width: 100%;
+  height: 100%;
+  line-height: 30px;
+  font-size: 15px;
+  transform: 0.1s;
+  color: #ffa500;
+}
+
+ul li a .iconb .fa:last-child {
+  color: #ffffff;
+}
+
+ul li a:hover .iconb .fa {
+  transform: translateY(-100%);
+}
+
+ul li a .nameb {
+  position: relative;
+  height: 24px;
+  width: 100%;
+  display: block;
+  overflow: hidden;
+}
+
+ul li a .nameb span {
+  color: #ffa500;
+  font-size: 15px;
+  line-height: 20px;
+  transition: 0.1s;
+}
+
+ul li a .nameb span:before {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  width: 100%;
+  height:100%;
+}
+
+ul li a:hover .nameb span {
+  color: #ffffff;
+  transform: translateY(-100%);
+}

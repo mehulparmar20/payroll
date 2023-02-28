@@ -1,0 +1,855 @@
+<?php
+if (!isset($_SESSION)) {
+    session_start();
+}
+
+require_once 'dbconfig.php';
+require_once 'admin/api/Payroll.php';
+require_once 'admin/api/index.php';
+require_once 'mail.php';
+require_once 'jwt/AuthJWT.php';
+require_once 'vendor/autoload.php';
+
+
+class Register
+{
+
+    public function createcompanyAdmin($db, $data, $object)
+    {
+        $mysqli = $db;
+        $subId = $object['subscription'];
+        $cusId = $object['customer'];
+        $plantype = $data['plantype'];
+        $adminname = $data['adminname'];
+        $adminemail = $data['adminemail'];
+        $comname = $data['comName'];
+        $admincontact = $data['admincontact'];
+        $userpass = hash('sha1', $data['userpass']);
+        $planproid = $data['planproid'];
+        $quntity = $data['quntity'];
+        $planpriid = $data['planpriceId'];
+        $devproid = $data['devproId'];
+        $time = time();
+        $extime = strtotime("next day");
+        $nxtm = 0;
+        $sql = "INSERT INTO `company_admin`(`company_name`, `admin_name`, `admin_contact`, `admin_email`, `admin_password`, `totalemployee`,`remainingemployee`, `subcriptionId`, `plan_name`, `plan_start`, `plan_end`, `customerId`,`addedtime`)
+                                    VALUES ('$comname','$adminname','$admincontact','$adminemail','$userpass','$quntity','$quntity','$subId','$plantype','$time','$nxtm','$cusId','$time')";
+        $res = $db->query($sql);
+        $type = json_encode($db);
+        $error = json_encode();
+        
+        if ($res) {
+            $lastid = $db->insert_id;
+            $token = array();
+            $token[] = $this->addshifttime($lastid,$db);
+            $token[] = $this->createtoken($data,$extime);
+            $token[] = $this->addPrivilege($db,$plantype,$lastid);
+            $token[] = $this->sendEmails($db,$lastid);
+        } else {
+            
+        }
+
+    }
+    
+    public function sendEmails($db, $id){
+        $event = new Util();
+        $row = $event->getCompanyDetails($db, $id);
+        $data = array('id' => $row['admin_id'],'name' => $row['admin_name']);
+        $extime = strtotime("next day");
+        $email = $row['admin_email'];
+        $name = $row['admin_name'];
+        $token = $this->createtoken($data,$extime);
+        $res = $this->sendverificationemail($email, $name, $token);
+        
+    }
+
+    public function addPrivilege($db,$plantype,$adminId){
+        $row = $this->getPlanDetails($db,$plantype);
+        $access = $row[1];
+        $sql = "INSERT INTO `access_view`(`employees`, `employee_view`, `manage_employee`, `holidays`, `department`, `designation`, `announcement`, `payroll`, `employee_salary`, `remaining_leaves`, `salary_settings`, `policy`, `attendance_module`, `attendance_view`, `attendance_info`, `break_module`, `break_view`, `break_info`, `leaves_module`, `leave_view`, `letters`, `joining`, `resignation`, `experience`, `termination`, `administration`, `company_profile`, `company_time`, `company_document`, `leave_type`, `add_user`, `company_logo`, `working_days`, `system_control`, `manage_password`, `admin_id`)
+                                        VALUES ( ".$access['employees'].", ".$access['employee_view'].", ".$access['manage_employee'].", ".$access['holiday'].", ".$access['department'].", ".$access['designation'].", ".$access['announcement'].", ".$access['payroll'].", ".$access['employee_salary'].",".$access['remaining_leave'].", ".$access['salary_settings'].", ".$access['policy'].", ".$access['attendance_module'].", ".$access['attendance_view'].", ".$access['attendance_info'].", ".$access['break_module'].", ".$access['break_view'].", ".$access['break_info'].", ".$access['leave_module'].", ".$access['leave_view'].", ".$access['letters_module'].", ".$access['joining'].", ".$access['resignation'].", ".$access['experience'].", ".$access['termination'].", ".$access['administration'].", ".$access['company_profile'].", ".$access['company_time'].", ".$access['company_document'].", ".$access['leave_type'].",".$access['add_user'].",".$access['company_logo'].",".$access['working_days'].",".$access['system_control'].",".$access['manage_password'].",'$adminId')";
+        $res = $db->query($sql);
+        if($res){
+            return true;
+        }else{
+            return false;
+        }
+    }
+    
+    public function getPlanDetails($db,$plantype){
+        $sql = "SELECT * FROM `product_plan` WHERE `plan_name` = '$plantype' ";
+        $res = $db->query($sql);
+        $row = $res->fetch_assoc();
+        $sql = "SELECT * FROM `plan_access` WHERE `plan_access_id` = '".$row['accessId']."' ";
+        $res = $db->query($sql);
+        $accessrow = $res->fetch_assoc();
+        return array($row,$accessrow);
+    }
+    
+    public function createtoken($data, $extime){
+        $obj = new AuthJwt();
+        $time = time() + 20;     
+        $resdata = $obj->setJWT($data,$extime);
+        return $resdata;
+    }
+    
+    public function decodetoken($token){
+        $obj = new AuthJwt();
+        $data = $obj->getjwt($token);
+        return $data;
+    }
+    
+    public function addshifttime($adminid,$db){
+        $userpass = hash('sha1', $data['userpass']);
+        $planproid = $data['planproid'];
+        $quntity = $data['quntity'];
+        $planpriid = $data['planpriceId'];
+        $devproid = $data['devproId'];
+        $time = time();
+        $timezone = "Asia/Kolkata";
+        $nxtm = 0;
+        $sql = "INSERT INTO `company_time`(`timezone`, `shift_no`, `company_in_time`, `company_out_time`, `company_break_time`, `late_fine`, `break_fine`, `admin_id`, `entry_time`) 
+                                VALUES ('$timezone','Shift 1','08:00','17:00','60','0','0','$adminid','$time')";
+        $res = $db->query($sql);
+        if ($res) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    public function sendverificationemail($email_id, $name, $token){
+        $string_to_name = '@@name@@';
+        $string_otp = '@link@';
+        $string_nullotp = '@@otp@@';
+        // for replace name
+        $getmail = new Mail();
+        $link = "http://new.windsonpayroll.com/verify.php?token=".$token;
+        // $link = 'Login';
+        $message = $getmail->getEmailtemplate('otp_verification');
+        $message = str_replace($string_to_name, $name, $message);
+        $message = str_replace($string_otp, $link, $message);
+        $message = str_replace($string_nullotp, 'Click below button', $message);
+        $subject = 'Windson Payroll | Email Verification';
+        return $getmail->sentApiMail($email_id, $name, $message, $subject);
+    }
+    
+    public function renewSubscription($subId,$db){
+        $nextmonth = strtotime("next month");
+        $sql = "UPDATE `company_admin` SET `plan_end` = '$nextmonth' WHERE `company_admin`.`subcriptionId` = '$subId'";
+        if($db->query($sql)){
+            return true;
+        }else{
+            return false;
+        }
+    }
+    
+    public function forgotpassword($email,$mysqli){
+        $comres = $this->checkcompany($email,$mysqli);
+        $userres = $this->checkuser($email,$mysqli);
+        $emperes = $this->checkemployee($email,$mysqli);
+        if ($comres['status']) {
+            $id = $comres['id'];
+            $name = $comres['name'];
+            $res = $this->setforgototp('company',$id, $email, $mysqli,$name);
+            if($res){
+                return array('status' => "success", 'message' => "OTP sent successfully.",'id' => $id,'type' => "admin", 'email' => $email);
+            }else{
+                return array('status' => "failed", 'message' => "OTP not sent successfully.",'type' => "admin");
+            }
+        }elseif($userres['status']){
+            $id = $userres['id'];
+            $name = $userres['name'];
+            $res = $this->setforgototp('user',$id, $email, $mysqli,$name);
+            if($res){
+                return array('status' => "success", 'message' => "OTP sent successfully.",'id' => $id,'type' => "user", 'email' => $email);
+            }else{
+                return array('status' => "failed", 'message' => "OTP not sent successfully.",'type' => "user");
+            }
+        }elseif($empres['status']){
+            $id = $empres['id'];
+            $name = $empres['name'];
+            $res = $this->setforgototp('employee',$id, $email, $mysqli,$name);
+            if($res){
+                return array('status' => "success", 'message' => "OTP sent successfully.",'id' => $id,'type' => "employee", 'email' => $email);
+            }else{
+                return array('status' => "failed", 'message' => "OTP not sent successfully.",'type' => "employee");
+            }
+        }else{
+            $res = array('status' => "failed", 'message' => "Email no exist in our system.",'email' => $email);
+            return $res;
+        }
+    }
+    
+    public function checkcompany($email,$mysqli){
+        $sql = "SELECT * FROM company_admin where admin_email = '$email' ";
+        $result = $mysqli->query($sql);
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $arr = array('status' => true, 'id' => $row['admin_id'],'name' => $row['admin_name']);
+            return $arr;
+        }else{
+            $arr = array('status' => false);
+            return $arr;
+        }
+        
+    }
+
+    public function setforgototp($type, $id,$email, $mysqli,$name){
+        
+        $ex_time = time() + 600;
+        $otp = rand(100000, 999999);
+        if ($type == 'company') {
+            $sql = "update `company_admin` set `forgototp` = '$otp', `forgototpextime` = '$ex_time' where `admin_id` = '$id'";
+        } elseif ($type == 'user') {
+            $sql = "update `add_users` set `forgototp` = '$otp', `forgototpextime` = '$ex_time' where `user_id` = '$id'";
+        }elseif($type == 'employee'){
+            $sql = "update `employee` set `forgototp` = '$otp', `forgototpextime` = '$ex_time' where `e_id` = '$id'";
+        }
+        if ($mysqli->query($sql)) {
+            if($this->sendforgotemail($email, $name, $otp)){
+                return true;
+            }else{
+                return false;
+            }
+        }
+            
+    }
+    
+    public function updatepassword($password,$id,$conn,$type){
+        
+        if ($type == 'company') {
+            $sql = "update `company_admin` set `admin_password` = '$password' where `admin_id` = '$id'";
+        } elseif ($type == 'user') {
+            $sql = "update `add_users` set `user_password` = '$password' where `user_id` = '$id'";
+        }elseif($type == 'employee'){
+            $sql = "update `employee` set `e_password` = '$password' where `e_id` = '$id'";
+        }
+        if ($conn->query($sql)) {
+            $res = array('status' => 'success', 'message' => 'Password change successfully.');
+            return $res;
+        }else{
+            $res = array('status' => 'error', 'message' => 'Password not update.');
+            return $res;
+        }
+            
+    }
+    
+    
+    public function checkuser($email,$mysqli){
+        $sql = "SELECT * FROM `add_users` where user_email = '$email' ";
+        $result = $mysqli->query($sql);
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $arr = array('status' => true, 'id' => $row['user_id'],'name' => $row['user_name']);
+            return $arr;
+        }else{
+            $arr = array('status' => false);
+            return $arr;
+        }
+        
+    }
+    
+    public function checkemployee($email,$mysqli){
+        $sql = "SELECT * FROM `employee` where e_email = '$email' ";
+        $result = $mysqli->query($sql);
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $arr = array('status' => true, 'id' => $row['e_id'],'name' => $row['e_firstname']." ".$row['e_lastname']);
+            return $arr;
+        }else{
+            $arr = array('status' => false);
+            return $arr;
+        }
+        
+    }
+
+
+    public function authenticuser($data, $db)
+    {
+        $type = $data['type'];
+        $email = $data['useremail'];
+        $password = hash("sha1", $data['password']);
+        if ($type == 'admin') {
+            $res = $this->authAdmin($email, $password, $db);
+            if ($res['responsemessage'] != 'success') {
+                return $this->authUser($email, $password, $db);
+            } else {
+                return $res;
+            }
+        } else {
+            return $this->authEmployee($email, $password, $db);
+        }
+    }
+
+    public function authEmployee($userid, $password, $mysqli)
+    {
+        $sql = "SELECT * FROM employee where e_email = '$userid' and e_password= '$password' and employee_status = 1 ";
+        $result = $mysqli->query($sql);
+        if ($result->num_rows > 0) {
+            // output data of each row
+            $count = 0;
+            $row = $result->fetch_assoc();
+            $event = new Util();
+            $admin_id = $row['admin_id'];
+            $employeeRes = $this->checkPlanvalidity($admin_id, $mysqli, $event);
+            $res = array();
+            if ($employeeRes) {
+                $data = $event->getCompanyDetails($mysqli, $admin_id);
+                $this->setEmployeeSession($row, $data, $mysqli);
+                $res['responsemessage'] = "success";
+                $res['message'] = "Login Success.";
+                $res['status'] = "200";
+            } else {
+                $res['responsemessage'] = "expired";
+                $res['message'] = "Plan has been expired.";
+                $res['status'] = "200";
+            }
+        } else {
+            $res['responsemessage'] = "invalid";
+            $res['message'] = "Invalid Credentials.";
+            $res['status'] = "200";
+        }
+        return $res;
+    }
+
+    public function authAdmin($email, $password, $mysqli)
+    {
+        $sql = "SELECT * FROM company_admin where admin_email = '$email' and admin_password='$password'";
+        $result = $mysqli->query($sql);
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $event = new Util();
+            $admin_id = $row['admin_id'];
+            $admin_name = $row['admin_name'];
+            $planres = $this->checkPlanvalidity($admin_id, $mysqli, $event);
+               
+            if ($planres) {
+                $obj = array(
+                    'id' => $admin_id,
+                    'name' => $admin_name,
+                    'email' => $email
+                );
+                if ($this->sentOTP($obj, $mysqli, 'admin')) {
+                    $res['responsemessage'] = "success";
+                    $res['message'] = "OTP Sent.";
+                    $res['status'] = "200";
+                    $res['id'] = $admin_id;
+                    $res['type'] = "admin";
+                } else {
+                    $res['responsemessage'] = "failed";
+                    $res['message'] = "OTP Not Sent.";
+                    $res['status'] = "500";
+                }
+            } else {
+                $obj = array(
+                    'id' => $admin_id,
+                    'name' => $admin_name,
+                    'email' => $email
+                );
+                if ($this->sentOTP($obj, $mysqli, 'admin')) {
+                    $res['responsemessage'] = "success";
+                    $res['substatus'] = 'expired';
+                    $res['message'] = "OTP Sent.";
+                    $res['status'] = "200";
+                    $res['id'] = $admin_id;
+                    $res['type'] = "admin";
+                } else {
+                    $res['responsemessage'] = "failed";
+                    $res['message'] = "OTP Not Sent.";
+                    $res['status'] = "500";
+                }
+            }
+        } else {
+            $res['errorCode'] = "invalid";
+            $res['responsemessage'] = 'failed';
+            $res['message'] = "User Not Found.";
+            $res['status'] = "200";
+        }
+        return $res;
+    }
+
+    public function authUser($email, $password, $mysqli)
+    {
+        $sql = "SELECT * FROM `add_users` where `user_email` = '$email' and `user_password` = '$password'";
+        $result = $mysqli->query($sql);
+        $event = new Util();
+        $res = array();
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $admin_id = $row['admin_id'];
+            $user_id = $row['user_id'];
+            $admin_name = $row['user_name'];
+            $planres = $this->checkPlanvalidity($admin_id, $mysqli, $event);
+            if ($planres) {
+                $obj = array(
+                    'id' => $user_id,
+                    'name' => $admin_name,
+                    'email' => $email
+                );
+                if ($this->sentOTP($obj, $mysqli, 'user')) {
+                    $res['responsemessage'] = "success";
+                    $res['message'] = "OTP Sent.";
+                    $res['status'] = "200";
+                    $res['id'] = $user_id;
+                    $res['type'] = "user";
+                } else {
+                    $res['responsemessage'] = "failed";
+                    $res['message'] = "OTP Not Sent.";
+                    $res['status'] = "500";
+                }
+            } else {
+                $res['responsemessage'] = "expired";
+                $res['message'] = "Plan Expired";
+                $res['status'] = "200";
+            }
+        } else {
+            $res['responsemessage'] = "invalid";
+            $res['message'] = "User Not Found.";
+            $res['status'] = "200";
+        }
+        return $res;
+    }
+
+    public function verfyAdminOTP($otp, $adminId, $mysqli)
+    {
+        $event = new Util();
+        $planres = $this->checkPlanvalidity($adminId, $mysqli, $event);
+        $res = array();
+        if ($planres) {
+            $row = $event->getCompanyDetails($mysqli, $adminId);
+            $expired_time = $row['expired_time'];
+            $login_time = time();
+            if ($expired_time > $login_time) {
+                $admin_id = $row['admin_id'];
+                $admin_name = $row['admin_name'];
+                $admin_otp = $row['otp'];
+                if ($admin_otp == $otp) {
+                    $planres = $this->checkPlanvalidity($admin_id, $mysqli, $event);
+                    if ($planres) {
+                        if ($this->setAdminSession($row, $mysqli)) {
+                            $res['responsemessage'] = "success";
+                            $res['message'] = "Login Success.";
+                            $res['status'] = "200";
+                        } else {
+                            $res['responsemessage'] = "failed";
+                            $res['message'] = "Login Failed.";
+                            $res['status'] = "500";
+                        }
+                    } else {
+                        if ($this->setMyAdminSession($row, $mysqli)) {
+                            $res['responsemessage'] = "success";
+                            $res['message'] = "Login Success.";
+                            $res['status'] = "200";
+                        } else {
+                            $res['responsemessage'] = "failed";
+                            $res['message'] = "Login Failed.";
+                            $res['status'] = "500";
+                        }
+                    }
+                } else {
+                    $res['responsemessage'] = "invalid";
+                    $res['message'] = "OTP not Match.";
+                    $res['status'] = "200";
+                }
+            } else {
+                $res['responsemessage'] = "expired";
+                $res['message'] = "OTP Expired.";
+                $res['status'] = "200";
+            }
+        } else {
+            $row = $event->getCompanyDetails($mysqli, $adminId);
+            if ($this->setMyAdminSession($row, $mysqli)) {
+                $res['responsemessage'] = "success";
+                $res['message'] = "Login Success.";
+                $res['status'] = "200";
+            } else {
+                $res['responsemessage'] = "failed";
+                $res['message'] = "Login Failed.";
+                $res['status'] = "500";
+            }
+        }
+        return $res;
+    }
+    
+    public function recoveradminRequest($otp, $adminId, $mysqli) {
+        $event = new Util();
+        $res = array();
+        $row = $event->getCompanyDetails($mysqli, $adminId);
+        $expired_time = $row['forgototpextime'];
+        $login_time = time();
+        if ($expired_time > $login_time) {
+            $admin_id = $row['admin_id'];
+            $admin_otp = $row['forgototp'];
+            if ($admin_otp == $otp) {
+                $res['responsemessage'] = "success";
+                $res['message'] = "OTP match.";
+                $res['status'] = "200";    
+            } else {
+                $res['responsemessage'] = "invalid";
+                $res['message'] = "OTP not match.";
+                $res['status'] = "200";
+            }
+        } else {
+            $res['responsemessage'] = "expired";
+            $res['message'] = "OTP Expired.";
+            $res['status'] = "200";
+        }
+        return $res;
+    }
+    
+    public function recoveruserRequest($otp, $id, $mysqli) {
+        $event = new Util();
+        $res = array();
+        $data = $event->getUserDetails($id,$mysqli);
+        $row = $data['data'];
+        $expired_time = $row['forgototpextime'];
+        $login_time = time();
+        if ($expired_time > $login_time) {
+            $admin_id = $row['user_id'];
+            $admin_otp = $row['forgototp'];
+            if ($admin_otp == $otp) {
+                $res['responsemessage'] = "success";
+                $res['message'] = "OTP match.";
+                $res['status'] = "200";    
+            } else {
+                $res['responsemessage'] = "invalid";
+                $res['message'] = "OTP not match.";
+                $res['status'] = "200";
+            }
+        } else {
+            $res['responsemessage'] = "expired";
+            $res['message'] = "OTP Expired.";
+            $res['status'] = "200";
+        }
+        return $res;
+    }
+    
+    public function recoveremployeeRequest($otp, $adminId, $mysqli) {
+        $event = new Util();
+        $res = array();
+        $row = $event->getEmpDetails($mysqli, $adminId);
+        $expired_time = $row['forgototpextime'];
+        $login_time = time();
+        if ($expired_time > $login_time) {
+            $admin_id = $row['e_id'];
+            $admin_otp = $row['forgototp'];
+            if ($admin_otp == $otp) {
+                $res['responsemessage'] = "success";
+                $res['message'] = "OTP match.";
+                $res['status'] = "200";    
+            } else {
+                $res['responsemessage'] = "invalid";
+                $res['message'] = "OTP not match.";
+                $res['status'] = "200";
+            }
+        } else {
+            $res['responsemessage'] = "expired";
+            $res['message'] = "OTP Expired.";
+            $res['status'] = "200";
+        }
+        return $res;
+    }
+
+    public function verfyUserOTP($otp, $userId, $mysqli)
+    {
+        $event = new Util();
+        $userres = $event->getUserDetails($userId, $mysqli);
+        $res = array();
+        if ($userres['count'] > 0) {
+            $userrow = $userres['data'];
+            $admin_id = $userrow['admin_id'];
+            $row = $event->getCompanyDetails($mysqli, $admin_id);
+            $expired_time = $userrow['otpextime'];
+            $login_time = time();
+            if ($expired_time > $login_time) {
+                $admin_otp = $userrow['otp'];
+                if ($admin_otp == $otp) {
+                    $planres = $this->checkPlanvalidity($admin_id, $mysqli, $event);
+                    if ($planres) {
+                        if ($this->setUserSession($userrow, $row, $mysqli)) {
+                            $res['responsemessage'] = "success";
+                            $res['message'] = "Login Success.";
+                            $res['status'] = "200";
+                        } else {
+                            $res['responsemessage'] = "failed";
+                            $res['message'] = "Login Failed.";
+                            $res['status'] = "500";
+                        }
+                    } else {
+                        $res['responsemessage'] = "expired";
+                        $res['message'] = "Plan Expired.";
+                        $res['status'] = "200";
+                    }
+                } else {
+                    $res['responsemessage'] = "invalid";
+                    $res['message'] = "OTP not Match.";
+                    $res['status'] = "200";
+                }
+            } else {
+                $res['responsemessage'] = "expired";
+                $res['message'] = "OTP Expired.";
+                $res['status'] = "200";
+            }
+        } else {
+            $res['responsemessage'] = "expired";
+            $res['message'] = "Plan Expired";
+            $res['status'] = "200";
+        }
+        return $res;
+    }
+
+    public function sentOTP($data, $conn, $type)
+    {
+        $ex_time = time() + 600;
+        $otp = rand(100000, 999999);
+        $id = $data['id'];
+        $email = $data['email'];
+        $name = $data['name'];
+        if ($type == 'admin') {
+            $sql = "update `company_admin` set `otp` = '$otp', `expired_time` = '$ex_time' where `admin_id` = '$id'";
+        } elseif ($type == 'user') {
+            $sql = "update `add_users` set `otp` = '$otp', `otpextime` = '$ex_time' where `user_id` = '$id'";
+        }
+        if ($conn->query($sql)) {
+            $this->sendemail($email, $name, $otp);
+            $res['responsemessage'] = "success";
+            $res['message'] = "Otp updated";
+            $res['status'] = "200";
+        } else {
+            $res['responsemessage'] = "failed";
+            $res['message'] = "Otp is not update";
+            $res['status'] = "200";
+        }
+        return $res;
+    }
+
+    public function sendemail($email_id, $name, $otp)
+    {
+        $string_to_name = '@@name@@';
+        $string_otp = '@@otp@@';
+        // for replace name
+        $getmail = new Mail();
+        $message = $getmail->getEmailtemplate('otp_verification');
+        $message = str_replace($string_to_name, $name, $message);
+        $message = str_replace($string_otp, $otp, $message);
+        $subject = 'Windson Payroll OTP Verification';
+        return $getmail->sentApiMail($email_id, $name, $message, $subject);
+    }
+    
+    public function sendforgotemail($email_id, $name, $otp){
+        $string_to_name = '@name@';
+        $string_otp = '@otp@';
+        // for replace name
+        $getmail = new Mail();
+        $message = $getmail->getEmailtemplate('forgotpassword');
+        $message = str_replace($string_to_name, $name, $message);
+        $message = str_replace($string_otp, $otp, $message);
+        $subject = 'Recover Windson Payroll Password';
+        $res = $getmail->sentApiMail($email_id, $name, $message, $subject);
+        return $res;
+    }
+
+    public function setLastLogintime($eid, $db, $type)
+    {
+        $ipdata = $this->ip();
+        $ip = $ipdata['ip'];
+        $city = $ipdata['city'];
+        $os = $ipdata['os'];
+        $browser = $ipdata['browser'];
+        $time = $ipdata['signtime'];
+        if ($type == 'employee') {
+            $sql = "UPDATE `employee` SET `ip`= '$ip',`os`= '$os',`browser`= '$browser',`city`= '$city',`lastlogin`= '$time' WHERE e_id = '$eid' ";
+        } elseif ($type == 'admin') {
+            $sql = "UPDATE `company_admin` SET `ip`= '$ip',`os`= '$os',`browser`= '$browser',`logincity`= '$city',`logintime`= '$time' WHERE admin_id = '$eid' ";
+        } elseif ($type == 'user') {
+            $sql = "UPDATE `add_users` SET `ip`= '$ip',`os`= '$os',`browser`= '$browser',`city`= '$city',`last_login`= '$time' WHERE user_id = '$eid' ";
+        }
+        if ($db->query($sql)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public function setEmployeeSession($data, $row, $conn)
+    {
+        $e_id = $data['e_id'];
+        $admin_id = $data['admin_id'];
+        $name = $data['e_firstname'] . " " . $data['e_lastname'];
+        $deviceId = $row['device_id'];
+        $device_username = $row['device_username'];
+        $device_password = $row['device_password'];
+        $_SESSION['employee'] = 'yes';
+        $_SESSION['username'] = $name;
+        $_SESSION['admin_id'] = $admin_id;
+        $_SESSION['e_id'] = $e_id;
+        $_SESSION['devIndex'] = $deviceId;
+        $_SESSION['device_username'] = $device_username;
+        $_SESSION['device_password'] = $device_password;
+        $_SESSION['shift_id'] = $data['shift_no'];
+        return $this->setLastLogintime($e_id, $conn, 'employee');
+    }
+
+    public function setAdminSession($row, $conn)
+    {
+        $admin_id = $row['admin_id'];
+        $name = $row['admin_name'];
+        $deviceId = $row['device_id'];
+        $device_username = $row['device_username'];
+        $device_password = $row['device_password'];
+        $_SESSION['admin'] = 'yes';
+        $_SESSION['admin_id'] = $admin_id;
+        $_SESSION['admin_name'] = $name;
+        $_SESSION['devIndex'] = $deviceId;
+        $_SESSION['device_username'] = $device_username;
+        $_SESSION['device_password'] = $device_password;
+        $_SESSION['shift_id'] = $row['shift_id'];
+        $_SESSION['stripe_id'] = $row['customerId'];
+        $_SESSION['sub_id'] = $row['subcriptionId'];
+        $_SESSION['userType'] = 'admin';
+        return $this->setLastLogintime($admin_id, $conn, 'admin');
+    }
+    
+    public function setMyAdminSession($row, $conn)
+    {
+        $admin_id = $row['admin_id'];
+        $name = $row['admin_name'];
+        $deviceId = $row['device_id'];
+        $device_username = $row['device_username'];
+        $device_password = $row['device_password'];
+        $_SESSION['admin'] = 'yes';
+        $_SESSION['admin_id'] = $admin_id;
+        $_SESSION['admin_name'] = $name;
+        $_SESSION['devIndex'] = $deviceId;
+        $_SESSION['device_username'] = $device_username;
+        $_SESSION['device_password'] = $device_password;
+        $_SESSION['shift_id'] = $row['shift_id'];
+        $_SESSION['stripe_id'] = $row['customerId'];
+        $_SESSION['sub_id'] = $row['subcriptionId'];
+        $_SESSION['userType'] = 'admin';
+        $_SESSION['substatus'] = 'unpaid';
+        return $this->setLastLogintime($admin_id, $conn, 'admin');
+    }
+
+    public function setUserSession($userrow, $row, $conn)
+    {
+        $admin_id = $row['admin_id'];
+        $name = $userrow['user_name'];
+        $device_username = $row['device_username'];
+        $device_password = $row['device_password'];
+        $deviceId = $row['device_id'];
+        $_SESSION['admin'] = 'yes';
+        $_SESSION['admin_id'] = $admin_id;
+        $_SESSION['user_id'] = $userrow['user_id'];
+        $_SESSION['admin_name'] = $name;
+        $_SESSION['devIndex'] = $deviceId;
+        $_SESSION['device_username'] = $device_username;
+        $_SESSION['device_password'] = $device_password;
+        $_SESSION['stripe_id'] = $row['customerId'];
+        $_SESSION['sub_id'] = $row['subcriptionId'];
+        $_SESSION['userType'] = 'user';
+        $_SESSION['shift_id'] = $row['shift_id'];
+        return $this->setLastLogintime($admin_id, $conn, 'admin');
+    }
+
+    public function checkPlanvalidity($adminId, $conn, $obj)
+    {
+        $row = $obj->getCompanyDetails($conn, $adminId);
+        $plan_end = $row['plan_end'];
+        $time = time();
+        if ($plan_end < $time) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public function ip()
+    {
+        $ip = $_SERVER['REMOTE_ADDR'];
+        // $access_key = '850c3e72e4e6ca731ad78e02f50d45dd';
+        $access_key = "1c21bea6dafe48b5aab9e5ad02bc7640";
+        // $ch = curl_init('http://api.ipstack.com/' . $ip . '?access_key=' . $access_key . '');
+        $ch = curl_init('https://api.ipgeolocation.io/ipgeo?access_key=' . $access_key . '&ip='.$ip.'&fields=geo');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $json = curl_exec($ch);
+        curl_close($ch);
+        // Decode JSON response
+        $api_result = json_decode($json, true);
+        // $address = $api_result['city'] . "," . $api_result['state_prov'] . "," . $api_result['country_code2'];
+        // $locip = $api_result['ip'];
+        // $loczip = $api_result['zipcode'];
+        $os = $this->getOSName();
+        $browser = $this->getBrowser();
+        return array("ip" => "",
+            "country" => "",
+            "city" => "",
+            "os" => "",
+            "browser" => "",
+            "signtime" => time()
+        );
+    }
+
+    public function getOSName()
+    {
+        $user_agent = $_SERVER['HTTP_USER_AGENT'];
+        $os_platform = "Bilinmeyen İşletim Sistemi";
+        $os_array = array(
+            '/windows nt 10/i' => 'Windows 10',
+            '/windows nt 6.3/i' => 'Windows 8.1',
+            '/windows nt 6.2/i' => 'Windows 8',
+            '/windows nt 6.1/i' => 'Windows 7',
+            '/windows nt 6.0/i' => 'Windows Vista',
+            '/windows nt 5.2/i' => 'Windows Server 2003/XP x64',
+            '/windows nt 5.1/i' => 'Windows XP',
+            '/windows xp/i' => 'Windows XP',
+            '/windows nt 5.0/i' => 'Windows 2000',
+            '/windows me/i' => 'Windows ME',
+            '/win98/i' => 'Windows 98',
+            '/win95/i' => 'Windows 95',
+            '/win16/i' => 'Windows 3.11',
+            '/macintosh|mac os x/i' => 'Mac OS X',
+            '/mac_powerpc/i' => 'Mac OS 9',
+            '/linux/i' => 'Linux',
+            '/ubuntu/i' => 'Ubuntu',
+            '/iphone/i' => 'iPhone',
+            '/ipod/i' => 'iPod',
+            '/ipad/i' => 'iPad',
+            '/android/i' => 'Android',
+            '/blackberry/i' => 'BlackBerry',
+            '/webos/i' => 'Mobile'
+        );
+        foreach ($os_array as $regex => $value) {
+            if (preg_match($regex, $user_agent)) {
+                $os_platform = $value;
+            }
+        }
+        return $os_platform;
+    }
+
+    public function getBrowser()
+    {
+        $user_agent = $_SERVER['HTTP_USER_AGENT'];
+        $browser = "Bilinmeyen Tarayıcı";
+        $browser_array = array(
+            '/msie/i' => 'Internet Explorer',
+            '/firefox/i' => 'Firefox',
+            '/safari/i' => 'Safari',
+            '/chrome/i' => 'Chrome',
+            '/edge/i' => 'Edge',
+            '/opera/i' => 'Opera',
+            '/netscape/i' => 'Netscape',
+            '/maxthon/i' => 'Maxthon',
+            '/konqueror/i' => 'Konqueror',
+            '/mobile/i' => 'Handheld Browser'
+        );
+
+        foreach ($browser_array as $regex => $value) {
+            if (preg_match($regex, $user_agent)) {
+                $browser = $value;
+            }
+        }
+        return $browser;
+    }
+}
