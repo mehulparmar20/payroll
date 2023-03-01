@@ -16,7 +16,7 @@
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.css" rel="stylesheet">
 <!--        <link href="http://3.92.193.2/assets/css/style.css" rel="stylesheet">-->
-        <script src="https://kit.fontawesome.com/69d52db2ce.js" crossorigin="anonymous"></script>
+        <!-- <script src="https://kit.fontawesome.com/69d52db2ce.js" crossorigin="anonymous"></script> -->
 
         <!-- Lineawesome CSS -->
         <!--<link rel="stylesheet" href="app/css/line-awesome.min.css">-->
@@ -36,7 +36,7 @@
         <link rel="stylesheet" href="app/css/style.css">
         <!--select2-->
         <link rel="stylesheet" href="https://unpkg.com/placeholder-loading/dist/css/placeholder-loading.min.css">
-
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
         <!--<link href="../assets/wizard/css/jquery.dataTable.min.css" rel="stylesheet">-->
         <!--<link rel="stylesheet" href="links/select2.min.css">-->
         <style>
@@ -61,12 +61,13 @@
 
             <!-- Header -->
             <div class="header">
-                <?php
+                <?php 
                 if(!isset($page)){
                     $page = '';
                 }
                 include '../dbconfig.php';
                 include 'api/index.php';
+                
                 $api = new Util();
                 $device_status = $api->checkDeviceStatus($_SESSION['devIndex'],$_SESSION['device_username'],$_SESSION['device_password']);
                 $sql = mysqli_query($conn, "SELECT * FROM company_admin where admin_id = " . $_SESSION['admin_id'] . " ");

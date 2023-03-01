@@ -1,6 +1,6 @@
 <?
 if(!isset($_POST['action'])){
-    header("../index.php");
+    header("./index.php");
     exit();
 }
 ob_start();
@@ -8,7 +8,7 @@ session_start();
 require_once ("../dbconfig.php");
 require_once ("api/index.php");
 include_once '../stripe/model/Stripeupdate.php';
-
+die;
 // Fetch Employee Data
 if($_POST['action'] == 'e_view')
 {

