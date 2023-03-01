@@ -396,7 +396,7 @@ if ($_SESSION['admin'] == 'yes') {
     <!-- /Statistics Widget -->
 
     <!-- see break out modal -->
-    <div id="see_break_out" class="modal custom-modal fade" role="dialog">
+    <div id="see_break_out" class="modal custom-modal " role="dialog">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -503,7 +503,7 @@ if ($_SESSION['admin'] == 'yes') {
                 success: function (data){
                     $('#break_infom').html(data);
                     if(status){
-                        show_break_out(true);
+                        // show_break_out(true);
                     }
                 }
             });
@@ -564,6 +564,7 @@ if ($_SESSION['admin'] == 'yes') {
             });
         }
         function show_break_out(status) {
+            $('#see_break_out').show();
             var admin_id = $("#admin_id").val();
             $.ajax({
                 url: 'read.php',
