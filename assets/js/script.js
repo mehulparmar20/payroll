@@ -1,4 +1,4 @@
-var stripe = '';
+let stripe = '';
 
 $(document).ready(function () {
     var w = window.innerWidth;
@@ -56,6 +56,7 @@ $(document).on("click", "#login-btn", function (e) {
                     },
                     datatype: "html",
                     success: function (response) {
+                        console.log(response);
                         var data = JSON.parse(response);
                         if (type == 'admin') {
                             if (data.responsemessage == 'success') {
@@ -96,7 +97,7 @@ function getParam(param) {
     return new URLSearchParams(window.location.search).get(param);
 }
 
-fetch("stripe/config.php")
+fetch("./stripe/config.php")
     .then(function (result) {
         return result.json();
     })

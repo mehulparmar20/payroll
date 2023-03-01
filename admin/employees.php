@@ -1037,7 +1037,111 @@ if ($_SESSION['admin'] == 'yes') {
                 $('#hiddiv').load('timeout.php');
             }, 100000);
         });
+        function processusertable(data, page_array, page, total_links, no) {
+    var table = `<table class="table table-striped custom-table mb-0">
+                    <thead>
+                      <tr>
+                         <th><center><b>No</b></center></th>
+                         <th><center><b>Name*</b></center></th>
+                         <th><center><b>Email*</b></center></th>
+                         <th><center><b>Mobile</b></center></th>
+                         <th class="text-nowrap"><center><b>Join Date</b></center></th>
+                         <th class="text-right no-sort"><b>Action</b></th>
+                      </tr>
+                    </thead>
+                    <tbody>`;
 
+
+    var i = 0;
+    const size = data.length;
+    for (i; i < size; i++) {
+        var row = data[i];
+        if (row.employee_profile != '') {
+            var profile = `<img alt="" height="100%" src="../employee/employee_profile/${row.employee_profile}">`;
+        } else {
+            var profile = `<img alt="" height="100%" src="app/img/user.png">`;
+        }
+        
+        if(row.isVipUser == 1){
+            var isVipUsercheck = `<a class="dropdown-item " href="#" onclick="isVipUser(this.name, 0)" id="remove" name="${row.e_id}" style="color:black" title="Remove from VIP User" ><i class="fa fa-user-plus m-r-5"> </i> Remove as VIP User</a>`;
+        }else{
+            var isVipUsercheck = `<a class="dropdown-item " href="#" onclick="isVipUser(this.name,1)" id="add" name="${row.e_id}" style="color:black" title="Add as VIP User" ><i class="fa fa-user-plus m-r-5"> </i> Add as VIP User</a>`;
+        }
+        var joindate = row.join_date;
+        table += `<tr>
+                        <td>${no++}</td>
+                        <td>
+                            <h2 class="table-avatar">
+                                    <a href="profile.php?id=${row.e_id}&name=${row.e_firstname}&nbsp;${row.e_lastname}" class="avatar">${profile}</a>
+                                    <a href="profile.php?id=${row.e_id}&name=${row.e_firstname}&nbsp;${row.e_lastname}">${row.e_firstname}&nbsp;${row.e_lastname}<span>${row.departments_name}</span></a>
+                            </h2>
+                        </td>
+                        <td><center>${row.e_email}</center></td>
+                        <td><center>${row.e_phoneno}</center></td>
+                        <td><center>${joindate}</center></td>
+                        <td class="text-right">
+                            <div class="dropdown dropdown-action">
+                                <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="material-icons">more_vert</i></a>
+                                    <div class="dropdown-menu dropdown-menu-right">
+                                        <a class="dropdown-item " onclick="updateUserPassword(this.id)" title="Update Password" href="#" id="${row.e_id}" style="color:black" title="Edit" ><i class="fa fa-key" aria-hidden="true"></i> Update Password</a>
+                                        <a class="dropdown-item view_doc" data-target="#view_document" title="View Document" href="#" data-toggle="modal" id="${row.e_id}" style="color:black" title="Edit" ><i class="fa fa-eye" aria-hidden="true"></i> View Document</a>
+                                        <a class="dropdown-item edit" href="#" data-toggle="modal"  data-target="#edit_employee" id="${row.e_id}" style="color:black" title="Edit" ><i class="fa fa-pencil m-r-5"></i> Edit</a>
+                                        <a class="dropdown-item delete" href="#"  id="deactivate-user" name="${row.emp_cardid}" style="color:black" title="Deactivate" ><i class="fa fa-trash-o m-r-5"> </i> Deactivate</a>
+                                        <div class="vip-user${row.e_id}" >${isVipUsercheck}</div>
+                                    </div>
+                            </div>
+                        </td>
+                      </tr>`;
+    }
+    table += `</tbody>
+              </table><br/>
+              <div class="col-auto float-right ml-auto">
+                 <ul class="pagination">`;
+    var psize = page_array.length;
+    var pagelink = ``;
+    var previous_link = '';
+    var next_link = '';
+    for (var k = 0; k < psize; k++) {
+        if (page == page_array[k]) {
+            pagelink += `<li class="page-item active">
+                            <a class="page-link" href="#">${page_array[k]}<span class="sr-only">(current)</span></a>
+                        </li>`;
+
+            var previous_id = page_array[k] - 1;
+            if (previous_id > 0) {
+                previous_link = `<li class="page-item">
+                                    <a class="page-link" href="javascript:void(0)" data-page_number="${previous_id}">Previous</a>
+                                </li>`;
+            } else {
+                previous_link = `<li class="page-item disabled">
+                                    <a class="page-link" href="#">Previous</a>
+                                </li>`;
+            }
+            var next_id = page_array[k] + 1;
+            if (next_id >= total_links) {
+                next_link = ` <li class="page-item disabled"><a class="page-link" href="#">Next</a></li>`;
+            } else {
+                next_link = `<li class="page-item">
+                                <a class="page-link" href="javascript:void(0)" data-page_number="${next_id}">Next</a>
+                             </li>`;
+            }
+        } else {
+            if (page_array[k] == '...') {
+                pagelink += `<li class="page-item disabled">
+                                    <a class="page-link" href="#">...</a>
+                                  </li>`;
+            } else {
+                pagelink += `<li class="page-item">
+                                <a class="page-link" href="javascript:void(0)" data-page_number="${page_array[k]}">${page_array[k]}</a>
+                              </li>`;
+            }
+        }
+    }
+    table += previous_link + pagelink + next_link;
+    table += ` </ul>
+            </div>`;
+    $("#dynamic_content").html(table);
+}
         // view edit employee
         async function editemp() {
             var f_name = document.getElementById('uf_name').value;
